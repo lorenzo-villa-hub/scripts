@@ -24,6 +24,9 @@ if 'LEPSILON' in incar_input:
         epsilon_static = vaspout.epsilon_static
         print('Macroscopic static dielectric tensor:')
         print(epsilon_static)
+        epsilon_ionic = vaspout.epsilon_ionic
+        print('ionic part of the static dielectric constant. Present when it’s a DFPT run:')
+        print(epsilon_ionic)
         print('')
 
 

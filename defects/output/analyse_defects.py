@@ -34,8 +34,8 @@ print('Please give delta chemical potentials in the different reservoirs in "che
 print('Please give reference chemical potentials in the "chempot_ref" dictionary\n')
 print('Please give path of pure calculation (unit cell or supercell both work) in the script\n')
 print('Be careful that the naming of the folders is correct :')
-print('     .../defect_system/{element}-vacancy/Charged{charge}/{scheme}/vasp_data \n')
-print('')  
+print('     .../defect_system/{element}-vacancy/Charged{charge}/{scheme}/vasp_data for vacancies')
+print('     .../defect_system/{element}-interstitial/{coordination-type}/Charged{charge}/{scheme}/vasp_data for interstitials \n')  
 print('')
 
 #############################################################################
@@ -71,9 +71,14 @@ dielectric_constant = 6.72 +6.70 # dielectric constant from PBE (LOPTICS + LEPSI
 '''CALCULATION OF PURE TOTAL ENERGY AND DENSITY OF STATES '''
 # path of pure DOS and total energy calculation - can be of unit cell or supercell
 # this is because the LOCPOT file needs to have the supercell structure and cannot be a unit cell calculation 
-pure_path = '/nfshome/villa/local-data/NN_cubic/vacancies-PBE/Pure/3-PBE-VOPT' + '/'
+
+pure_path = '/nfshome/villa/local-data/NN_cubic/vacancies-PBE/Pure/3-PBE-VOPT/'
+
 path_to_pure_locpot = '/nfshome/villa/local-data/NN_cubic/vacancies-PBE-locpot/Pure/1-PBE-SCF/LOCPOT'
-dos_path = '/nfshome/villa/local-data/NN_cubic/DOS-BS/PBE/1-DOS' + '/'
+
+dos_path = '/nfshome/villa/local-data/NN_cubic/DOS-BS/PBE/1-DOS/'
+
+input_path = '/nfshome/villa/local-data/NN_cubic/vacancies-PBE/'
 
 '''CALCULATION SCHEME'''
 # usually fixed but it's possible to change it - paths for LOCPOT and vasprun.xml files for PBE and HSE schemes
@@ -86,15 +91,12 @@ calc_scheme_types = {'PBE':{'locpot':'1-PBE-SCF',
 calc_scheme = calc_scheme_types['PBE']
 
 '''CORRECTIONS'''
-# dictionary for corrections to include in DefectEntry
+# dictionary for corrections to include in SingleDefectData
 corrections = {}
-# include Freysoldt corrections
 include_freysoldt_corrections = True 
 
 '''PLOTTING'''
-# getting and saving plots
 get_plots = True
-# get subplot with different reservoirs - get_plots needs to be set to True
 get_subplot = True
 # subplot settings - number of rows and columns of subplot
 nrows,ncolumns = 2,3
@@ -102,33 +104,29 @@ nrows,ncolumns = 2,3
 ###############################################################################
 ###############################################################################
 
+# Paths have to end with backslash. I update everything with os.path.join but I'm lazy
+print('Path of pure calculation: "%s"\n' %pure_path)
+print('Path of pure LOCPOT calculation: "%s"\n' %path_to_pure_locpot)
+print('Path of pure DOS calculation: "%s"\n' %dos_path)
+print('Path of defects calculation: "%s"\n' %input_path)
 
-print(f'Path of pure calculation: "{pure_path}"\n')
-
-# folder with defects calculations
-#input_path = sys.argv[1] + '/'
-input_path = '/nfshome/villa/local-data/NN_cubic/vacancies-PBE' + '/'
 system_name = os.path.basename(os.path.dirname(input_path))
 
-# getting pure structure from LOCPOT file of pure supercell calculation
+
 structure_pure = Locpot.from_file(path_to_pure_locpot).structure
-# n° of atoms in supercell structure
 natoms_sup = len(structure_pure.sites)
 
-# getting values of pure structure
+
 vasprun_pure = Vasprun(pure_path + 'vasprun.xml')
-# getting band_gap and vbm
 vasprun_dos = Vasprun(dos_path + 'vasprun.xml')
 (band_gap,cbm, vbm, is_band_gap_direct) = vasprun_dos.eigenvalue_band_properties
-# n° atoms in pure structure calculation
+
 natoms_pure = len(Locpot.from_file(path_to_pure_locpot).structure.sites)
 Epure = ((vasprun_pure.final_energy)/natoms_pure)*natoms_sup
-# creating a list of directories contained in input directory
-list_dir_vacancies = glob(input_path + '*/')
 
+list_dir_vacancies = glob(input_path + '*/')
 # saving initial corrections dictionary
 corrections_init = corrections.copy() 
-
 # list with defects
 defect_list = []
 
