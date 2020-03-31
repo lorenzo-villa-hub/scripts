@@ -45,7 +45,7 @@ print('')
 
 
 # dielectric constant
-dielectric_constant = 4.75 # normal avarage of components of dielectric tensor from PBE (LOPTICS) - pmg does it this way, is it correct?
+dielectric_constant = 4.75 # normal avarage of components of dielectric tensor from PBE (LOPTICS) - pmg averages the tensor in  does it this way, is it correct?
 
 
 '''CALCULATION OF PURE TOTAL ENERGY AND DENSITY OF STATES '''
