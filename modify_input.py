@@ -4,7 +4,7 @@ import os
 from glob import glob
 import sys
 import argparse as ap
-from my_functions.change_file import change_file
+from pynter.tools.change_file import change_file
 
 '''
 Usage: modify_input.py [files] [string_to_remove] [string_to_add] 
