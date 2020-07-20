@@ -8,21 +8,19 @@ Created on Tue Mar  3 16:56:38 2020
 """
 
 from pynter.automations.core import CommandHandler, VaspAutomation
-from pynter.automations.schemes import VaspSchemes
+from pynter.automations.schemes import VaspSchemes, VaspNEBSchemes
 
 
 # parse arguments
 args = CommandHandler().vasp_args()
 
 v = VaspAutomation(job_script_filename = args.job_script_filename, status_filename=args.status_filename, path=None)
-s = VaspSchemes(v,status=[], **args.__dict__)
+s = VaspNEBSchemes(v,status=[], **args.__dict__)
 
-conv_el, conv_ionic = s.check_convergence()
-
-if conv_el and conv_ionic:
-    s.next_step_relaxation_schemes()
-elif s.error_check:
-    s.resubmit_if_step_limits_reached()
+if s.is_prevonvergence():
+    if s.check_preconvergence_images():
+        s.clean_NEB_dirs()
+        s.copy_images_next_step_and_submit()
 s.write_status()
     
 
