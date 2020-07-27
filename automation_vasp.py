@@ -7,15 +7,14 @@ Created on Tue Mar  3 16:56:38 2020
 @author: villa
 """
 
-from pynter.automations.core import CommandHandler, VaspAutomation
-from pynter.automations.schemes import VaspSchemes
+from pynter.automations.core import CommandHandler
+from pynter.automations.vasp import Schemes
 
 
 # parse arguments
 args = CommandHandler().vasp_args()
-
-v = VaspAutomation(job_script_filename = args.job_script_filename, status_filename=args.status_filename, path=None)
-s = VaspSchemes(v,status=[], **args.__dict__)
+# initialize scheme
+s = Schemes(path=None,status=[], **args.__dict__)
 
 conv_el, conv_ionic = s.check_convergence()
 

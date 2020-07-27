@@ -7,19 +7,20 @@ Created on Tue Mar  3 16:56:38 2020
 @author: villa
 """
 
-from pynter.automations.core import CommandHandler, VaspAutomation
-from pynter.automations.schemes import VaspSchemes, VaspNEBSchemes
+from pynter.automations.core import CommandHandler
+from pynter.automations.vasp import NEBSchemes
 
 
 # parse arguments
 args = CommandHandler().vasp_args()
 
-v = VaspAutomation(job_script_filename = args.job_script_filename, status_filename=args.status_filename, path=None)
-s = VaspNEBSchemes(v,status=[], **args.__dict__)
+s = NEBSchemes(path=None,status=[], **args.__dict__)
 
-if s.is_prevonvergence():
+if s.is_preconvergence():
     if s.check_preconvergence_images():
-        s.clean_NEB_dirs()
+        s.copy_images_next_step_and_submit()
+else:
+    if s.is_NEB_job_finished():
         s.copy_images_next_step_and_submit()
 s.write_status()
     
