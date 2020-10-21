@@ -1,7 +1,17 @@
+#!/usr/bin/env python
 
 from pymatgen.io.cif import CifParser
 from pymatgen.io.vasp.inputs import Poscar
+import sys
 
-structure = CifParser('NN_R3c_Seidel1976.cif').get_structures(primitive=False)[0]
+print('Usage: python convert_cif_to_poscar.py <filename> <primitive (bool)> ')
 
-Poscar(structure).write_file('POSCAR_NN_R3c_conventional')
+filename = sys.argv[1]
+if len(sys.argv) == 3:
+	primitive = sys.argv[2]
+else:
+	primitive = False
+	
+structure = CifParser(filename).get_structures(primitive=primitive)[0]
+
+Poscar(structure).write_file('POSCAR_'+ filename.replace('.cif',''))
