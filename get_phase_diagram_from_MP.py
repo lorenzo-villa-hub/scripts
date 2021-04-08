@@ -20,7 +20,7 @@ system_name = '-'.join(system)
 mpr = MPRester(MAPI_KEY)  # object for connecting to MP Rest interface
 compat = MaterialsProjectCompatibility()  # sets energy corrections and +U/pseudopotential choice
 
-unprocessed_entries = mpr.get_entries_in_chemsys(system)
+unprocessed_entries = mpr.get_entries_in_chemsys(system,inc_structure=True)
 processed_entries = compat.process_entries(unprocessed_entries)  # filter and add energy corrections
 
 pd = PhaseDiagram(processed_entries)
