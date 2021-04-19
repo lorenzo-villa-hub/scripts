@@ -39,7 +39,7 @@ class RunJob:
     
     def run(self):   
         jobclass = self.find_jobclass()
-        j = jobclass.from_directory('.',job_script_filename=self.filename)
+        j = jobclass.from_directory('.',job_script_filename=self.filename,load_outputs=False)
         j.run_job(write_input=False,sync=self.sync)
         return
     
