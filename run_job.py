@@ -8,6 +8,7 @@ Created on Thu Apr  8 12:25:23 2021
 
 
 from pynter.data.jobs import Job
+from pynter.vasp.jobs import VaspJob, VaspNEBJob
 import argparse as ap
 
 
@@ -31,15 +32,10 @@ class RunJob:
             setattr(self,key,value)
                 
         return
-
-    def find_jobclass(self):
-        for c in Job.__subclasses__():
-            if c.__name__ == self.jobclass:
-                return c
     
     def run(self):   
-        jobclass = self.find_jobclass()
-        j = jobclass.from_directory('.',job_script_filename=self.filename,load_outputs=False)
+        cls = globals()[self.jobclass]
+        j = cls.from_directory('.',job_script_filename=self.filename,load_outputs=False)
         j.run_job(write_input=False,sync=self.sync)
         return
     
