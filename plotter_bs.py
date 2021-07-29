@@ -1,4 +1,4 @@
-#!/nfshome/villa/anaconda3/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 Created on Wed Feb 19 17:44:10 2020
