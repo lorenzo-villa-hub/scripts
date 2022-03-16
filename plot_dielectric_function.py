@@ -36,7 +36,7 @@ plt.plot(w, e2, label = 'imaginary part')
 plt.xlim(0,10)
 plt.xlabel('Energy (eV)')
 plt.ylabel('Dielectric function')
-plt.title(system_name)
+#plt.title(system_name)
 plt.grid()
 plt.legend()
 
