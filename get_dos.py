@@ -1,9 +1,9 @@
-#!/nfshome/villa/anaconda3/bin/python
+#!/usr/bin/env python
 # script to generate files for DOS
 
 import numpy as np
 from pymatgen.io.vasp.outputs import Vasprun
-from pymatgen import Structure
+from pymatgen.core.structure import Structure
 from pymatgen.io.vasp import Poscar
 
 from pymatgen.electronic_structure.plotter import DosPlotter
