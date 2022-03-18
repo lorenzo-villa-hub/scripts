@@ -1,4 +1,4 @@
-#!/nfshome/villa/anaconda3/bin/python
+#!/usr/bin/env python
 
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.electronic_structure.plotter import BSPlotter
