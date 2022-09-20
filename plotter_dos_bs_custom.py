@@ -42,21 +42,58 @@ v = Vasprun('vasprun.xml')
 
 if get_dos:
     dos = v.complete_dos
-
-#BSDOS plotter SECTION
-
-
 efermi = dos.efermi
-gap = dos.get_gap()
-ylim = a.ylim
-vb_range = -1*ylim[0] if ylim else 4  # adjust for nonsense args in BSDOSPlotter
-cb_range = ylim[1] - gap if ylim else 4  # adjust for nonsense args in BSDOSPlotter
 bs = v.get_band_structure(line_mode=True,force_hybrid_mode=a.hybrid,efermi=efermi)
 
-plt = BSDOSPlotter(bs_projection=None, dos_projection='elements', bs_legend=None, 
-                    vb_energy_range=vb_range, cb_energy_range=cb_range).get_plot(bs,dos)
-ax = plt.gcf().get_axes()[0]
-ax.set_ylabel('$E - E_F$ (eV)')
+
+# PLOT BS
+
+plt = BSPlotter(bs).get_plot(ylim=a.ylim,get_subplot=True)
+ax1 = plt.gca()
+plt.xticks(fontsize=25)
+plt.yticks(fontsize=25)
+    
+
+# PLOT DOS
+
+partial_dos = dos.get_spd_dos()
+dos_plotter = DosPlotter()
+dos_plotter.add_dos('total',dos)
+for orbital in partial_dos:
+    dos_plotter.add_dos(orbital,partial_dos[orbital])
+plt = dos_plotter.get_plot(xlim=a.ylim,get_subplot=True)    
+
+# modify pymatgen output to flip graph
+ax = plt.gca()
+ymax = 0
+fermi_lines = []
+for i in range(0,len(ax.lines)):
+    x = ax.lines[i].get_ydata()
+    y = ax.lines[i].get_xdata()
+    for j in range(0,len(x)):
+        if x[j] > a.ylim[0] and x[j] < a.ylim[1]:
+            if x[j] > ymax:
+                ymax = x[j]
+    ax.lines[i].set_xdata(x)
+    ax.lines[i].set_ydata(y)
+    if ax.lines[i].get_linestyle() == '--':
+        fermi_lines.append(ax.lines[i])
+        
+ax.lines = [l for l in ax.lines if l not in fermi_lines] 
+xlim = ax.get_ylim()
+ylim = ax.get_xlim()
+ax.set_xlim()
+ax.set_ylim()
+ax.set_xlim(0,ymax)
+ax.set_ylim(a.ylim)
+ax.set_xlabel('Density of states',size=25)
+ax.set_yticks([])
+ax.set_ylabel(None)
+plt.xticks(fontsize=25)
+
+fig = plt.gcf()
+fig.tight_layout()
+
 
 if a.savefig:
     plt.savefig('DOS-BS.pdf')
