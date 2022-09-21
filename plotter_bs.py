@@ -26,9 +26,10 @@ v = Vasprun("vasprun.xml")
 bs = v.get_band_structure(kpoints_filename=a.kpoints_filename,line_mode=a.line_mode,force_hybrid_mode=a.force_hybrid_mode)
 plt = BSPlotter(bs).get_plot(ylim=a.ylim)
 plt.gca().get_legend().remove()
+
 if a.title:
     plt.title(a.title,fontdict={'fontsize':25})
 if a.savefig:
-    plt.savefig('BS.pdf')
+    plt.savefig('BS.pdf',bbox_inches='tight')
 else:
     plt.show()
