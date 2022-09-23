@@ -9,8 +9,6 @@ import json
 import sys
 #import matplotlib.pyplot as plt
 
-os.chdir('/nfshome/villa/local-data/NN_cubic/DOS-BS/PBE/2-BS')
-
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-p','--path-to-dos',help='Path to Dos object saved as json or path to where vasprun for dos is stored',required=False,type=str,default=None,metavar='',dest='path_to_dos')    
