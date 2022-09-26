@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 from pymatgen.io.vasp.outputs import Vasprun
-from pynter.vasp.pmg_electronic_structure_plotter import BSPlotter , BSDOSPlotter, DosPlotter
-from pymatgen.electronic_structure.dos import FermiDos, CompleteDos
+from pynter.vasp.pmg_electronic_structure_plotter import BSPlotter , BSDOSPlotter, DosPlotter # modified version of pymatgen plotter
+#from pymatgen.io.electronic_structure.plotter import BSDOSPlotter # real pymatgen 
+from pymatgen.electronic_structure.dos import FermiDos, CompleteDos, FermiDos
 import argparse
 import os
 import json
@@ -18,7 +19,6 @@ parser.add_argument('-y','--ylim',help='Range for y-axis',required=False,default
 parser.add_argument('-t','--title',help='Title of the plot',required=False,type=str,default=None,metavar='',dest='title') 
 
 a = parser.parse_args()
-
 
 if not a.ylim:
     a.ylim = (-10,10)
@@ -41,8 +41,8 @@ v = Vasprun('vasprun.xml')
 if get_dos:
     dos = v.complete_dos
 
-#BSDOS plotter SECTION
 
+#BSDOS plotter SECTION
 
 efermi = dos.efermi
 gap = dos.get_gap()
@@ -51,9 +51,14 @@ vb_range = -1*ylim[0] if ylim else 4  # adjust for nonsense args in BSDOSPlotter
 cb_range = ylim[1] - gap if ylim else 4  # adjust for nonsense args in BSDOSPlotter
 bs = v.get_band_structure(line_mode=True,force_hybrid_mode=a.hybrid,efermi=efermi)
 
-plt = BSDOSPlotter(bs_projection=None, dos_projection='elements', bs_legend=None, 
+try:
+    plt = BSDOSPlotter(bs_projection=None, dos_projection='elements', bs_legend=None, 
+                    vb_energy_range=vb_range, cb_energy_range=cb_range).get_plot(bs,dos,draw_fermi=False)
+except:
+    plt = BSDOSPlotter(bs_projection=None, dos_projection='elements', bs_legend=None, 
                     vb_energy_range=vb_range, cb_energy_range=cb_range).get_plot(bs,dos)
 ax = plt.gcf().get_axes()[0]
+temp = plt.gcf()
 ax.set_ylabel('$E - E_F$ (eV)')
 
 if a.savefig:
