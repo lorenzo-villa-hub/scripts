@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import json
-from pymatgen import MPRester
+from pymatgen.ext.matproj import MPRester
 from pymatgen.entries.compatibility import MaterialsProjectCompatibility
 from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter,PDEntry
 from pymatgen.core.periodic_table import Element
