@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from pymatgen.io.vasp.outputs import Vasprun
-from pynter.vasp.pmg_electronic_structure_plotter import BSPlotter , BSDOSPlotter, DosPlotter # modified version of pymatgen plotter
+from pynter.vasp.pmg.pmg_electronic_structure_plotter import BSPlotter , BSDOSPlotter, DosPlotter # modified version of pymatgen plotter
 #from pymatgen.io.electronic_structure.plotter import BSDOSPlotter # real pymatgen 
 from pymatgen.electronic_structure.dos import FermiDos, CompleteDos, FermiDos
 import argparse
