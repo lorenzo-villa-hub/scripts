@@ -21,7 +21,7 @@ if args.outfile:
 else:
     df_file = filename.replace('dump','pkl')
     filename_nopath = df_file.split('/')[-1]
-    df_file = df_file.replace(filename_nopath,'df_A-site_' + filename_nopath)
+    df_file = df_file.replace(filename_nopath,'df_WC_order_param_' + filename_nopath)
 
 ## Compute WC order parameter
 
