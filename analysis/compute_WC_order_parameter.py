@@ -8,9 +8,10 @@ import argparse
 
 ### PARSE ARGS
 
-parser = argparse.ArgumentParser(description='Compute A-site order with SOAP and RF model')
+parser = argparse.ArgumentParser(description='Compute Warren-Cowley order parameter')
 parser.add_argument('dump_file', help='Path to the dump file')
 parser.add_argument('--interval', '-i', type=int, default=1,help='Compute every n structures (default: 1)')
+parser.add_argument('--nstructures','-n',type=int, default=None,help='Number of structures to compute (plus last structure eventually)')
 parser.add_argument('--outfile', '-o', type=int,default=None,help='Output filename ')
 args = parser.parse_args()
 
@@ -65,10 +66,19 @@ def get_WC_order_parameter(
 ### ITERATE OVER DUMP STRUCTURES
 
 atoms_list = ase.io.read(filename,index=':')
+n_atoms_list = len(atoms_list)
+print('Number of structures in dump file:%i' %n_atoms_list)
+if not structure_interval != 1:
+    if args.nstructures:
+        structure_interval = len(atoms_list)//args.nstructures
+total = n_atoms_list // structure_interval
+if n_atoms_list % structure_interval != 0:
+    total += 1 
+print('Number of structures to compute:%i' %total)
 data = []
 indexes = []
 for idx,atoms in tqdm(enumerate(atoms_list),total=len(atoms_list)//structure_interval,desc='Computing WC order parameter'):
-    if idx % structure_interval == 0:
+    if idx % structure_interval == 0 or idx==n_atoms_list-1: #include last structure
         indexes.append(idx)
         WC = get_WC_order_parameter(atoms,['Sr'],['Na','Bi'],8)
         data.append({
@@ -80,3 +90,4 @@ for idx,atoms in tqdm(enumerate(atoms_list),total=len(atoms_list)//structure_int
 
 df = pd.DataFrame(data,index=indexes)
 df.to_pickle(df_file)
+print('File saved as pickle DataFrame as: %s'%df_file)

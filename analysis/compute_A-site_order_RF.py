@@ -14,6 +14,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Compute A-site order with SOAP and RF model')
 parser.add_argument('dump_file', help='Path to the dump file')
 parser.add_argument('--interval', '-i', type=int, default=1,help='Compute every n structures (default: 1)')
+parser.add_argument('--nstructures','-n',type=int, default=None,help='Number of structures to compute (plus last structure eventually)')
 parser.add_argument('--outfile', '-o', type=int,default=None,help='Output filename ')
 args = parser.parse_args()
 
@@ -56,12 +57,20 @@ element_map = {
     3:'Bi',
     4:'O'}
 
+n_atoms_list = len(atoms_list)
+print('Number of structures in dump file:%i' %n_atoms_list)
+if not structure_interval != 1:
+    if args.nstructures:
+        structure_interval = len(atoms_list)//args.nstructures
+total = n_atoms_list // structure_interval
+if n_atoms_list % structure_interval != 0:
+    total += 1 
+print('Number of structures to compute:%i' %total)
 keys = ['atoms','probabilities']
 indexes = []
 data = {k:[] for k in keys}
-
-for idx,atoms in tqdm(enumerate(atoms_list), total=len(atoms_list)//structure_interval, desc="Computing A-site order"):
-    if idx % structure_interval == 0:
+for idx,atoms in tqdm(enumerate(atoms_list), total=n_atoms_list, desc="Computing A-site order"):
+    if idx % structure_interval == 0 or idx==n_atoms_list-1: #include last structure
         indexes.append(idx)
         # Assign types from dump file
         # atom_types = atoms.get_array('numbers') # not needed if dump file is written with elements
@@ -84,3 +93,4 @@ for idx,label in enumerate(labels):
     
 ### SAVE FILE
 df.to_pickle(df_file)
+print('File saved as pickle DataFrame as: %s'%df_file)
