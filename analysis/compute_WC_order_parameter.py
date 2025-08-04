@@ -77,7 +77,7 @@ if n_atoms_list % structure_interval != 0:
 print('Number of structures to compute:%i' %total)
 data = []
 indexes = []
-for idx,atoms in tqdm(enumerate(atoms_list),total=len(atoms_list)//structure_interval,desc='Computing WC order parameter'):
+for idx,atoms in tqdm(enumerate(atoms_list),total=len(atoms_list),desc='Computing WC order parameter'):
     if idx % structure_interval == 0 or idx==n_atoms_list-1: #include last structure
         indexes.append(idx)
         WC = get_WC_order_parameter(atoms,['Sr'],['Na','Bi'],8)
