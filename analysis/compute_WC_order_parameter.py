@@ -68,7 +68,7 @@ def get_WC_order_parameter(
 atoms_list = ase.io.read(filename,index=':')
 n_atoms_list = len(atoms_list)
 print('Number of structures in dump file:%i' %n_atoms_list)
-if not structure_interval != 1:
+if structure_interval == 1:
     if args.nstructures:
         structure_interval = len(atoms_list)//args.nstructures
 total = n_atoms_list // structure_interval
