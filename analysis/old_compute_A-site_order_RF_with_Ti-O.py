@@ -30,7 +30,7 @@ else:
 
 ### LOAD ML MODEL
 
-data_path = os.path.join(LOCAL_DIR,'NaBiTi2O6/A-site-order-classifier/models/training/random-forest/')
+data_path = os.path.join(LOCAL_DIR,'NaBiTi2O6/A-site-order-classifier/models/training/random-forest/classifier')
 model = joblib.load(data_path+'A-site_classifier_RF.joblib')
 model.verbose = 0
 
