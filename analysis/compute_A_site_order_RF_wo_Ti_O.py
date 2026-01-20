@@ -11,7 +11,6 @@ import os
 from pynter import LOCAL_DIR
 
 
-
 def compute_A_site_order(atoms_list,structure_interval=1):
 
     species = ["Na", "Bi"] 
