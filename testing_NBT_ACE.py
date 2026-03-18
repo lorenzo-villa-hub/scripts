@@ -305,7 +305,7 @@ def test_A_site_hierarchy_R3c(dft_db):
         atoms_relaxed = atoms.copy()
         atoms_relaxed.calc = calc
         ucf = UnitCellFilter(atoms=atoms_relaxed) 
-        BFGS(ucf,logfile='ase_relax_log.txt').run(fmax=0.05)
+        BFGS(ucf,logfile='ase_relax_log.txt').run(fmax=0.05,steps=200)
         energy_relaxed = atoms.get_potential_energy() + energy_corr
         data.append({
             'label':label,
@@ -381,7 +381,7 @@ def test_A_site_hierarchy_Pm3m(dft_db):
         atoms_relaxed = atoms.copy()
         atoms_relaxed.calc = calc
         ucf = UnitCellFilter(atoms=atoms_relaxed) 
-        BFGS(ucf,logfile='ase_relax_log.txt').run(fmax=0.05)
+        BFGS(ucf,logfile='ase_relax_log.txt').run(fmax=0.05,steps=200)
         energy_relaxed = atoms.get_potential_energy() + energy_corr
         data.append({
             'label':label,
@@ -608,6 +608,7 @@ def test_defect_formation_energies(dft_db):
         return 'R3-SG146/Defects' in row.path and '2-PBE-OPT' in row.path
     groups_added = []
 
+    all_converged = True
     for row in dft_db.select(filter=filter_step1):
         group = row.path.split('/')[-3]
         charge = int(row.path.split('/')[-2].strip('q'))
@@ -656,7 +657,9 @@ def test_defect_formation_energies(dft_db):
             })
             
             
-            BFGS(atoms=atoms,logfile='ase_relax_log.txt').run(fmax=0.05); # relax with ACE
+            converged = BFGS(atoms=atoms,logfile='ase_relax_log.txt').run(fmax=0.05,steps=200); # relax with ACE
+            if not converged:
+                all_converged = False
             data.append({
                 'method':'ACE',
                 'type':'relaxed',
@@ -731,7 +734,10 @@ def test_defect_formation_energies(dft_db):
     #plt.ylim(-6.3,2)
     plt.tight_layout()
 
-    return plt.gcf()
+    if all_converged:
+        return plt.gcf()
+    else:
+        return None
 
 
 
@@ -769,7 +775,6 @@ def test_A_site_disordered_structures(dft_db):
         atoms_list.append(atoms)
 
 
-
     # Check E(disorder) - E(001)
     from ase.filters import UnitCellFilter
 
@@ -777,16 +782,19 @@ def test_A_site_disordered_structures(dft_db):
     atoms = primitive_atoms_supercell.copy()
     atoms.calc = calc
     ucf = UnitCellFilter(atoms,hydrostatic_strain=hydrostatic_strain)
-    BFGS(ucf,logfile='ase_relax_log.txt').run(fmax=0.05)
+    BFGS(ucf,logfile='ase_relax_log.txt').run(fmax=0.05,steps=200)
     energy_M4 = atoms.get_potential_energy()/len(atoms)
     atoms_M4 = atoms.copy()
 
     data = []
+    all_converged = True
     for atoms in atoms_list:
         atoms.calc = calc
         energy = atoms.get_potential_energy()/len(atoms)
         ucf = UnitCellFilter(atoms,hydrostatic_strain=hydrostatic_strain)
-        BFGS(ucf,logfile='ase_relax_log.txt').run(fmax=0.05)
+        converged = BFGS(ucf,logfile='ase_relax_log.txt').run(fmax=0.05,steps=200)
+        if not converged:
+            all_converged = False
         energy_rel = atoms.get_potential_energy() /len(atoms)
 
         d = {
@@ -804,16 +812,45 @@ def test_A_site_disordered_structures(dft_db):
     print(f'MEAN energy diff btw disorder and 001 R3c: {mean}')
     print(f'STD energy diff btw disorder and 001 R3c: {std}')
 
-    return mean, std
+    plt.figure(figsize=(6,6))
+    plt.bar(['A-site disorder'], [mean], yerr=[std], capsize=5, width=0.4)
+    plt.ylabel('$\Delta E_{001}^{disordered}$ (eV/atom)')
+    plt.title(f'$<\Delta E>$ = {round(mean,3)*1000} meV')
+    plt.tight_layout()
+
+    if all_converged:
+        return plt.gcf()
+    else:
+        return None
+
+
+
+
 
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Test ACE potential for NBT-ST')
+
     parser.add_argument('filename', help='ACE potential filename')
-    parser.add_argument('--fit-path', '-fp', type=str,default=None,dest='fit_path',help='Path with fitting output')
-    parser.add_argument('--db-filename', '-db', type=str, default='testing.db',dest='db_path',help='ASE db filename with custom DFT data')
-    parser.add_argument('--report-path', '-rp', type=str,default=None,dest='report_path',help='Path to store report')
+    
+    # paths
+    parser.add_argument('--fit-path', '-fp', type=str,default=None,dest='fit_path',metavar='',help='Path with fitting output')
+    parser.add_argument('--db-filename', '-db', type=str, metavar='',
+                        default='/nfshome/villa/local-data/NaBiTi2O6/ML-potentials/ACE/testing/databases/testing.db',
+                        dest='db_path',help='ASE db filename with custom DFT data')
+    parser.add_argument('--report-path', '-rp', type=str,default=None,dest='report_path',metavar='',help='Path to store report')
+
+    # testing functions
+    parser.add_argument('--train-set','-V',action='store_false',dest='train_set',help=' Exclude training set distribution')
+    parser.add_argument('--parity','-pa',action='store_false',dest='parity',help='Exclude parity plots')
+    parser.add_argument('--rhombo','-R',action='store_false',dest='rhombo',help='Exclude A-site R3c hierarchy')
+    parser.add_argument('--cubic','-C',action='store_false',dest='cubic',help='Exclude A-site Pm3m hierarchy')
+    parser.add_argument('--eos','-EV',action='store_false',dest='eos',help='Exclude equation of state')
+    parser.add_argument('--defects','-df',action='store_false',dest='defects',help='Exclude defect formation energies')
+    parser.add_argument('--disorder','-ds',action='store_false',dest='disorder',help='Exclude A-site disorder')
+
+
     args = parser.parse_args()
 
 
@@ -830,14 +867,38 @@ if __name__ == '__main__':
     sns.set_theme(context='talk',style='whitegrid')
     figures = []
 
-    fig = test_A_site_hierarchy_R3c(dft_db)
-    figures.append(fig)
+    if args.train_set:
+        fig = training_dataset_volume_and_forces()
+        figures.append(fig)
 
-    fig = test_A_site_hierarchy_Pm3m(dft_db)
-    figures.append(fig)
+    if args.parity:
+        parity_figs = parity_plots()
+        for fig in parity_figs:
+            figures.append(fig)
 
-    fig = test_energy_vs_volume(dft_db)
-    figures.append(fig)
+    if args.rhombo:
+        fig = test_A_site_hierarchy_R3c(dft_db)
+        figures.append(fig)
+
+    if args.cubic:
+        fig = test_A_site_hierarchy_Pm3m(dft_db)
+        figures.append(fig)
+
+    if args.eos:
+        fig = test_energy_vs_volume(dft_db)
+        figures.append(fig)
+    
+    if args.defects:
+        fig = test_defect_formation_energies(dft_db)
+        if fig:
+            figures.append(fig)
+
+    if args.disorder:
+        fig = test_A_site_disordered_structures(dft_db)
+        if fig:
+            figures.append(fig)
+
+    
 
     # # Save figures
 
