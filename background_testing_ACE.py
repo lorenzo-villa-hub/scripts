@@ -61,7 +61,7 @@ def run_backup_and_testing(
 
 if __name__ == '__main__':
 
-    interval = 7200 # run every two hours
+    interval = 3600 # run every hour
     run_every(
             interval=interval,
             function=run_backup_and_testing,

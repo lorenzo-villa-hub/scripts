@@ -120,7 +120,6 @@ def training_dataset_volume_and_forces():
 
 
 
-
 # # ---------------- DFT vs ACE training and testing ------------------------
 
 def parity_plots():
@@ -220,7 +219,6 @@ def parity_plots():
 
 
 
-
 # #-------------- Test bulk structures ------------------------------
 
 def test_bulk_structures(train_df):
@@ -273,7 +271,6 @@ def test_bulk_structures(train_df):
     plt.tight_layout()
     #plt.show()
     return plt.gcf()
-
 
 
 
@@ -349,11 +346,7 @@ def test_A_site_hierarchy_R3c(dft_db):
 
     return plt.gcf()
 
-
-
-
 ### CUBIC Pm3-m
-
 
 def test_A_site_hierarchy_Pm3m(dft_db):
 
@@ -429,9 +422,7 @@ def test_A_site_hierarchy_Pm3m(dft_db):
 
 
 
-
 # # ------------ Test energy vs volume --------------------------------------
-
 
 def test_energy_vs_volume(dft_db):
 
@@ -798,6 +789,7 @@ def test_defect_formation_energies(dft_db):
 
 
 
+
 # # ------------------- Test vacancies vs Na neighbors
 
 def test_Vac_A_vs_Na_neighbors(dft_db):
@@ -908,8 +900,8 @@ def test_Vac_A_vs_Na_neighbors(dft_db):
     return plt.gcf()
 
 
-## ------------- Test A-site disorder ----------------------------------------------
 
+## ------------- Test A-site disorder ----------------------------------------------
 
 def test_A_site_disordered_structures(dft_db):
 
@@ -992,6 +984,46 @@ def test_A_site_disordered_structures(dft_db):
 
 
 
+## ------------- Test NBT-ST mixing enthalpy ----------------------------------------
+
+def test_NBTST_mixing_enthalpy(dft_db):
+
+    print('Test NBT-ST mixing enthalpy')
+
+    data = []
+    def filter(row):
+        return 'mixing/SuperCell2' in row.path
+    for row in dft_db.select(filter=filter):
+        X = float(row.path.split('/')[-2].strip('X'))
+        atoms = row.toatoms()
+        atoms.calc = calc
+        ucf = UnitCellFilter(atoms)
+        conv = BFGS(atoms=atoms,logfile=ase_logfile).run(fmax=0.05,steps=100)
+        if conv:
+            d = {
+                'x_Sr':X,
+                'volume':atoms.get_volume(),
+                'energy_pa':atoms.get_potential_energy()/len(atoms),
+            }
+            data.append(d)
+    df = pd.DataFrame(data)  
+
+    def linear_interpolation(x_Sr):
+        energy_x0 = df.loc[df['x_Sr'] == 0, 'energy_pa'].min()
+        energy_x1 = df.loc[df['x_Sr'] == 1, 'energy_pa'].iloc[0]
+        m =  energy_x1 - energy_x0
+        q = energy_x0
+        return m*x_Sr + q
+
+    df['mixing_enthalpy_meV_pa'] = df.apply(lambda row: (row['energy_pa'] - linear_interpolation(row['x_Sr']))*1000  ,axis=1)
+
+    plt.figure(figsize=(6,6))
+    df.plot.scatter(x='x_Sr',y='mixing_enthalpy_meV_pa',s=50)
+    plt.xlabel(r'$X_{Sr}$')
+    plt.ylabel('Mixing Energy (meV/atom)');
+    plt.tight_layout()
+    return plt.gcf()
+
 
 
 if __name__ == '__main__':
@@ -1018,6 +1050,8 @@ if __name__ == '__main__':
     #parser.add_argument('--defects','-D',action='store_true',dest='defects',help='defect formation energies')
     parser.add_argument('--neighbors','-N',action='store_true',dest='neighbors',help='A-site vacancies vs Na neighbors')
     #parser.add_argument('--disorder','-A',action='store_true',dest='disorder',help='A-site disorder')
+    parser.add_argument('--mixing','-M',action='store_true',dest='mixing',help='NBT-ST mixing enthalpy')
+
 
     args = parser.parse_args()
 
@@ -1076,6 +1110,9 @@ if __name__ == '__main__':
     #     if fig:
     #         figures.append(fig)
 
+    if args.mixing or all:
+        fig = test_NBTST_mixing_enthalpy(dft_db)
+        figures.append(fig)
     
 
     # # Save figures
