@@ -502,10 +502,6 @@ def test_energy_vs_volume(dft_db):
                 ax_bottom.plot(x,y,ls='--',color=colors[idx],lw=3)
                 ax_bottom.scatter(v,e,color=colors[idx],s=40)
 
-    # set the two y ranges 
-    ax_top.set_ylim(-300,-298)
-    ax_bottom.set_ylim(-311,-309)
-
     # hide touching spines
     ax_top.spines.bottom.set_visible(False)
     ax_bottom.spines.top.set_visible(False)
@@ -806,7 +802,7 @@ def test_defect_formation_energies(dft_db):
 
 def test_Vac_A_vs_Na_neighbors(dft_db):
 
-    print('test A-site vacancies vs Na neighbors')
+    print('Test A-site vacancies vs Na neighbors')
 
     from pymatgen.core.structure import Structure
     from defermi.generator import create_vacancies
@@ -823,8 +819,9 @@ def test_Vac_A_vs_Na_neighbors(dft_db):
         atoms = atoms.repeat(supercell_size)
         atoms.calc = calc
         ucf = UnitCellFilter(atoms,hydrostatic_strain=True)
-        BFGS(ucf,logfile=ase_logfile).run(fmax=0.05)
-        atoms_dict[label] = atoms.copy()
+        conv = BFGS(ucf,logfile=ase_logfile).run(fmax=0.05,steps=200)
+        if conv:
+            atoms_dict[label] = atoms.copy()
 
     data = []
     for label,atoms_bulk in atoms_dict.items():
@@ -852,18 +849,19 @@ def test_Vac_A_vs_Na_neighbors(dft_db):
             atoms.calc = calc
             atoms_ideal = atoms.copy()
             energy_ideal = atoms.get_potential_energy()
-            BFGS(atoms,logfile=ase_logfile).run(fmax=0.05)
+            conv = BFGS(atoms,logfile=ase_logfile).run(fmax=0.05,steps=200)
 
-            d = {
-                'id':id,
-                'type':typ,
-                'n_Na_neighbors':n_Na_neighbors,
-                'atoms_ideal':atoms_ideal,
-                'atoms_rel':atoms.copy(),
-                'energy_ideal':energy_ideal,
-                'energy_rel':atoms.get_potential_energy()
-            }
-            data.append(d)
+            if conv:
+                d = {
+                    'id':id,
+                    'type':typ,
+                    'n_Na_neighbors':n_Na_neighbors,
+                    'atoms_ideal':atoms_ideal,
+                    'atoms_rel':atoms.copy(),
+                    'energy_ideal':energy_ideal,
+                    'energy_rel':atoms.get_potential_energy()
+                }
+                data.append(d)
 
     df = pd.DataFrame(data)
 
@@ -877,6 +875,8 @@ def test_Vac_A_vs_Na_neighbors(dft_db):
         atoms.calc = calc 
         mu_refs[el] = atoms.get_potential_energy()/len(atoms)
     mu_refs
+    print('Chemical potentials with ACE:')
+    print(mu_refs)
 
     def get_formation_energy(row):
         if row['type'] == 'bulk':
@@ -1015,7 +1015,7 @@ if __name__ == '__main__':
     parser.add_argument('--cubic','-C',action='store_true',dest='cubic',help='A-site Pm3m hierarchy')
     parser.add_argument('--eos','-E',action='store_true',dest='eos',help='equation of state')
     parser.add_argument('--site','-S',action='store_true',dest='site_potentials',help='site potentials')
-    parser.add_argument('--defects','-D',action='store_true',dest='defects',help='defect formation energies')
+    #parser.add_argument('--defects','-D',action='store_true',dest='defects',help='defect formation energies')
     parser.add_argument('--neighbors','-N',action='store_true',dest='neighbors',help='A-site vacancies vs Na neighbors')
     #parser.add_argument('--disorder','-A',action='store_true',dest='disorder',help='A-site disorder')
 
@@ -1062,10 +1062,10 @@ if __name__ == '__main__':
         fig = test_site_potentials(dft_db)
         figures.append(fig)
     
-    if args.defects or all:
-        fig = test_defect_formation_energies(dft_db)
-        if fig:
-            figures.append(fig)
+    # if args.defects or all:
+    #     fig = test_defect_formation_energies(dft_db)
+    #     if fig:
+    #         figures.append(fig)
 
     if args.neighbors or all:
         fig = test_Vac_A_vs_Na_neighbors(dft_db)

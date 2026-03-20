@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 import time
 import subprocess
@@ -35,7 +36,7 @@ def run_backup_and_testing(
                 print('Fitting completed, stopping the program...')
                 sys.exit(0) # stop the program if fitting is done
 
-    if iter and iter % iteration_interval == 0:
+    if iter > 50: #and iter % iteration_interval == 0:
         path = base_path / f'iter_{str(iter).zfill(3)}'
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
@@ -51,8 +52,7 @@ def run_backup_and_testing(
                             script_filename,
                              'interim_potential_0.yaml',
                             '--report-path',str(path),
-                            '-V',
-                            '-pa'
+                            '-E','-C','-R','-N','-S'
                             ],
                     stdout=out_file,
                     stderr=err_file,
@@ -61,4 +61,9 @@ def run_backup_and_testing(
 
 if __name__ == '__main__':
 
-    run_every(interval=10,function=run_backup_and_testing,script_filename='/nfshome/villa/scripts/testing_NBT_ACE.py')
+    interval = 7200 # run every two hours
+    run_every(
+            interval=interval,
+            function=run_backup_and_testing,
+            script_filename='/nfshome/villa/scripts/testing_NBT_ACE.py'
+            ) 
