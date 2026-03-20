@@ -305,7 +305,7 @@ def test_A_site_hierarchy_R3c(dft_db):
         atoms_relaxed = atoms.copy()
         atoms_relaxed.calc = calc
         ucf = UnitCellFilter(atoms=atoms_relaxed) 
-        BFGS(ucf,logfile='ase_relax_log.txt').run(fmax=0.05,steps=200)
+        BFGS(ucf,logfile=ase_logfile).run(fmax=0.05,steps=200)
         energy_relaxed = atoms.get_potential_energy() + energy_corr
         data.append({
             'label':label,
@@ -381,7 +381,7 @@ def test_A_site_hierarchy_Pm3m(dft_db):
         atoms_relaxed = atoms.copy()
         atoms_relaxed.calc = calc
         ucf = UnitCellFilter(atoms=atoms_relaxed) 
-        BFGS(ucf,logfile='ase_relax_log.txt').run(fmax=0.05,steps=200)
+        BFGS(ucf,logfile=ase_logfile).run(fmax=0.05,steps=200)
         energy_relaxed = atoms.get_potential_energy() + energy_corr
         data.append({
             'label':label,
@@ -535,6 +535,67 @@ def test_energy_vs_volume(dft_db):
 
 
 
+# # ----------------- Test site potentials -------------------------------------------
+
+def test_site_potentials(dft_db):
+
+    print(f'Test site potentials')
+
+    def filter(row):
+        return 'volume' in row.path
+
+    data = []
+    for row in dft_db.select(filter=filter):
+        label = row.path.split('/')[-2]
+        atoms = row.toatoms()
+        atoms.calc = calc
+        BFGS(atoms,logfile=ase_logfile).run(fmax=0.05,steps=200)
+
+        site_potentials = {}
+        for el,pot in zip(atoms.symbols,atoms.get_potential_energies()):
+            if el not in site_potentials:
+                site_potentials[el] = []
+            site_potentials[el].append(pot)
+        
+        d = {
+            'label' : label,
+            'volume': atoms.get_volume()
+            }
+        for element in site_potentials:
+            avg_pot = np.mean([pot for el,pot in site_potentials.items() if el == element])
+            d[f'avg_pot_{element}'] = avg_pot
+
+        data.append(d)
+    df = pd.DataFrame(data)
+
+    elements = ['Na','Bi','Ti','O']
+
+    fig, axes = plt.subplots(2, 2, figsize=(10, 8), constrained_layout=True)
+    axes = axes.flatten()
+
+    mapping = {
+        'M1':'$111$',
+        'M2':'$110$',
+        'M3':'$(11-01)_{xy}$',
+        'M4':'$001$',
+        'M5':'$(10-01)_z$ ',
+        'M6':'all$3$+$1$'}
+    for i, el in enumerate(elements):
+        ax = axes[i]
+        for label,symbol in mapping.items():
+            df_label = df[df['label'] == label]
+            ax.plot(df_label['volume'], df_label[f'avg_pot_{el}'],marker='o',label=symbol)
+        ax.set_title(el)
+        if i > 1:
+            ax.set_xlabel('Volume (Å$^3$)')
+            ax.set_ylabel('Energy (eV)')
+        
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles,labels,loc="center",bbox_to_anchor=(1.1, 0.5),fontsize=12)
+
+    return fig
+
+
 
 
 # #  ------------------ Test defect formation energies --------------------------------
@@ -657,7 +718,7 @@ def test_defect_formation_energies(dft_db):
             })
             
             
-            converged = BFGS(atoms=atoms,logfile='ase_relax_log.txt').run(fmax=0.05,steps=200); # relax with ACE
+            converged = BFGS(atoms=atoms,logfile=ase_logfile).run(fmax=0.05,steps=200); # relax with ACE
             if not converged:
                 all_converged = False
             data.append({
@@ -741,6 +802,111 @@ def test_defect_formation_energies(dft_db):
 
 
 
+# # ------------------- Test vacancies vs Na neighbors
+
+def test_Vac_A_vs_Na_neighbors(dft_db):
+
+    print('test A-site vacancies vs Na neighbors')
+
+    from pymatgen.core.structure import Structure
+    from defermi.generator import create_vacancies
+    import numpy as np
+    from defermi.defects import get_defect_from_string
+
+    def filter(row):
+        return 'tunica' in row.path
+    atoms_dict = {}
+    supercell_size = 2
+    for row in dft_db.select(filter=filter):
+        label = row.path.split('/')[-2]
+        atoms = row.toatoms()
+        atoms = atoms.repeat(supercell_size)
+        atoms.calc = calc
+        ucf = UnitCellFilter(atoms,hydrostatic_strain=True)
+        BFGS(ucf,logfile=ase_logfile).run(fmax=0.05)
+        atoms_dict[label] = atoms.copy()
+
+    data = []
+    for label,atoms_bulk in atoms_dict.items():
+        id = label
+        atoms_bulk.calc = calc
+        d = {
+            'id':id,
+            'type':'bulk',
+            'n_Na_neighbors':None,
+            'atoms_rel':atoms_bulk.copy(),
+            'energy_rel':atoms_bulk.get_potential_energy()
+        }    
+        data.append(d)
+
+        structure_bulk = Structure.from_ase_atoms(atoms_bulk).sort()
+        defects = create_vacancies(structure_bulk,elements=['Na','Bi'])
+        for defect in defects:
+            typ = defect.name.split('(')[0] # no label
+            site = defect.site
+            neighbors = structure_bulk.get_neighbors(site,r=4.5)
+            n_Na_neighbors = int(sum([1 for n in neighbors if n.specie.symbol == 'Na']))
+            structure = defect.generate_defect_structure() 
+
+            atoms = structure.to_ase_atoms()
+            atoms.calc = calc
+            atoms_ideal = atoms.copy()
+            energy_ideal = atoms.get_potential_energy()
+            BFGS(atoms,logfile=ase_logfile).run(fmax=0.05)
+
+            d = {
+                'id':id,
+                'type':typ,
+                'n_Na_neighbors':n_Na_neighbors,
+                'atoms_ideal':atoms_ideal,
+                'atoms_rel':atoms.copy(),
+                'energy_ideal':energy_ideal,
+                'energy_rel':atoms.get_potential_energy()
+            }
+            data.append(d)
+
+    df = pd.DataFrame(data)
+
+    # CHEMICAL POTENTIALS
+    mu_refs = {}
+    def filter(row):
+        return 'ElementalPhases' in row.path
+    for row in dft_db.select(filter=filter):
+        atoms = row.toatoms()
+        el = atoms.symbols[0]
+        atoms.calc = calc 
+        mu_refs[el] = atoms.get_potential_energy()/len(atoms)
+    mu_refs
+
+    def get_formation_energy(row):
+        if row['type'] == 'bulk':
+            return None
+        else:
+            energy_bulk = df.loc[(df['type'] == 'bulk') & (df['id'] == row['id'])]['energy_rel'].iloc[0]
+            energy_def = row['energy_rel']
+            element = row['type'].split('_')[-1]
+            eform = energy_def - energy_bulk + mu_refs[element]
+            return eform
+
+    df['eform'] = df.apply(lambda row : get_formation_energy(row), axis=1)
+
+    df_def = df[df['type'] != 'bulk']
+    grouped = df_def.groupby(['type','n_Na_neighbors'])
+    stats = grouped[['eform']].agg(['mean','std'])
+    stats.columns = ['_'.join(col) for col in stats.columns]
+
+    plt.figure(figsize=(6,6))
+    for key in ['Vac_Na','Vac_Bi']:
+        label = get_defect_from_string(key).symbol
+        sub = stats.loc[key]
+        plt.errorbar(sub.index,sub['eform_mean'],yerr=sub['eform_std'],marker='o',label=label)
+    plt.xlabel('n° of Na neighbors')
+    plt.ylabel('$\Delta E_F$ (eV)')
+    plt.legend()
+    plt.tight_layout()
+
+    return plt.gcf()
+
 
 ## ------------- Test A-site disorder ----------------------------------------------
 
@@ -782,7 +948,7 @@ def test_A_site_disordered_structures(dft_db):
     atoms = primitive_atoms_supercell.copy()
     atoms.calc = calc
     ucf = UnitCellFilter(atoms,hydrostatic_strain=hydrostatic_strain)
-    BFGS(ucf,logfile='ase_relax_log.txt').run(fmax=0.05,steps=200)
+    BFGS(ucf,logfile=ase_logfile).run(fmax=0.05,steps=200)
     energy_M4 = atoms.get_potential_energy()/len(atoms)
     atoms_M4 = atoms.copy()
 
@@ -792,7 +958,7 @@ def test_A_site_disordered_structures(dft_db):
         atoms.calc = calc
         energy = atoms.get_potential_energy()/len(atoms)
         ucf = UnitCellFilter(atoms,hydrostatic_strain=hydrostatic_strain)
-        converged = BFGS(ucf,logfile='ase_relax_log.txt').run(fmax=0.05,steps=200)
+        converged = BFGS(ucf,logfile=ase_logfile).run(fmax=0.05,steps=200)
         if not converged:
             all_converged = False
         energy_rel = atoms.get_potential_energy() /len(atoms)
@@ -814,15 +980,15 @@ def test_A_site_disordered_structures(dft_db):
 
     plt.figure(figsize=(6,6))
     plt.bar(['A-site disorder'], [mean], yerr=[std], capsize=5, width=0.4)
-    plt.ylabel('$\Delta E_{001}^{disordered}$ (eV/atom)')
-    plt.title(f'$<\Delta E>$ = {round(mean,3)*1000} meV')
+    plt.ylabel(r'$ \Delta E_{001}^{disordered} $ (eV/atom)')
+    mean_in_meV = str(int(np.around(mean,decimals=3)*1000))
+    plt.title(r'$ <\Delta E> = $' + f'{mean_in_meV} meV')
     plt.tight_layout()
 
     if all_converged:
         return plt.gcf()
     else:
         return None
-
 
 
 
@@ -837,23 +1003,25 @@ if __name__ == '__main__':
     # paths
     parser.add_argument('--fit-path', '-fp', type=str,default=None,dest='fit_path',metavar='',help='Path with fitting output')
     parser.add_argument('--db-filename', '-db', type=str, metavar='',
-                        default='/nfshome/villa/local-data/NaBiTi2O6/ML-potentials/ACE/testing/databases/testing.db',
+                        default='/nfshome/villa/potentials/testing/testing.db',
                         dest='db_path',help='ASE db filename with custom DFT data')
     parser.add_argument('--report-path', '-rp', type=str,default=None,dest='report_path',metavar='',help='Path to store report')
 
     # testing functions
-    parser.add_argument('--train-set','-V',action='store_false',dest='train_set',help=' Exclude training set distribution')
-    parser.add_argument('--parity','-pa',action='store_false',dest='parity',help='Exclude parity plots')
-    parser.add_argument('--rhombo','-R',action='store_false',dest='rhombo',help='Exclude A-site R3c hierarchy')
-    parser.add_argument('--cubic','-C',action='store_false',dest='cubic',help='Exclude A-site Pm3m hierarchy')
-    parser.add_argument('--eos','-EV',action='store_false',dest='eos',help='Exclude equation of state')
-    parser.add_argument('--defects','-df',action='store_false',dest='defects',help='Exclude defect formation energies')
-    parser.add_argument('--disorder','-ds',action='store_false',dest='disorder',help='Exclude A-site disorder')
-
+    parser.add_argument('--all',action='store_true',dest='all',help='Run all test functions')
+    parser.add_argument('--train-set','-V',action='store_true',dest='train_set',help=' training set distribution')
+    parser.add_argument('--parity','-P',action='store_true',dest='parity',help='parity plots')
+    parser.add_argument('--rhombo','-R',action='store_true',dest='rhombo',help='A-site R3c hierarchy')
+    parser.add_argument('--cubic','-C',action='store_true',dest='cubic',help='A-site Pm3m hierarchy')
+    parser.add_argument('--eos','-E',action='store_true',dest='eos',help='equation of state')
+    parser.add_argument('--site','-S',action='store_true',dest='site_potentials',help='site potentials')
+    parser.add_argument('--defects','-D',action='store_true',dest='defects',help='defect formation energies')
+    parser.add_argument('--neighbors','-N',action='store_true',dest='neighbors',help='A-site vacancies vs Na neighbors')
+    #parser.add_argument('--disorder','-A',action='store_true',dest='disorder',help='A-site disorder')
 
     args = parser.parse_args()
 
-
+    ase_logfile = 'ase_relax_log.txt'
     fit_path = Path(args.fit_path) if args.fit_path else Path.cwd()
     calc = PyACECalculator( str(fit_path / args.filename) )
 
@@ -867,36 +1035,46 @@ if __name__ == '__main__':
     sns.set_theme(context='talk',style='whitegrid')
     figures = []
 
-    if args.train_set:
+    all = args.all
+
+    if args.train_set or all:
         fig = training_dataset_volume_and_forces()
         figures.append(fig)
 
-    if args.parity:
+    if args.parity or all:
         parity_figs = parity_plots()
         for fig in parity_figs:
             figures.append(fig)
 
-    if args.rhombo:
+    if args.rhombo or all:
         fig = test_A_site_hierarchy_R3c(dft_db)
         figures.append(fig)
 
-    if args.cubic:
+    if args.cubic  or all:
         fig = test_A_site_hierarchy_Pm3m(dft_db)
         figures.append(fig)
 
-    if args.eos:
+    if args.eos or all:
         fig = test_energy_vs_volume(dft_db)
         figures.append(fig)
+
+    if args.site_potentials or all:
+        fig = test_site_potentials(dft_db)
+        figures.append(fig)
     
-    if args.defects:
+    if args.defects or all:
         fig = test_defect_formation_energies(dft_db)
         if fig:
             figures.append(fig)
 
-    if args.disorder:
-        fig = test_A_site_disordered_structures(dft_db)
-        if fig:
-            figures.append(fig)
+    if args.neighbors or all:
+        fig = test_Vac_A_vs_Na_neighbors(dft_db)
+        figures.append(fig)
+
+    # if args.disorder or all:
+    #     fig = test_A_site_disordered_structures(dft_db)
+    #     if fig:
+    #         figures.append(fig)
 
     
 
