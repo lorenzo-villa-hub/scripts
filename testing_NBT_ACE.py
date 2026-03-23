@@ -164,10 +164,10 @@ def parity_plots():
         axes[0].set_ylabel("$E_{ACE}$ (eV)")
         axes[0].set_title("Energy")
 
-        rmse_E = np.sqrt(np.mean((ace_E - dft_E)**2))
+        mae_E = np.mean(np.abs(ace_E - dft_E))
         axes[0].text(
             0.05, 0.95,
-            f"RMSE = {rmse_E:.5f} eV/atom",
+            f"MAE = {mae_E:.5f} eV/atom",
             transform=axes[0].transAxes,
             verticalalignment="top"
         )
@@ -197,10 +197,10 @@ def parity_plots():
         axes[1].set_ylabel("ACE forces (eV/Å)")
         axes[1].set_title("Forces")
 
-        rmse_F = np.sqrt(np.mean((ace_F - dft_F)**2))
+        mae_F = np.mean(np.abs(ace_F - dft_F))
         axes[1].text(
             0.05, 0.95,
-            f"RMSE = {rmse_F:.4f} eV/Å",
+            f"MAE = {mae_F:.4f} eV/Å",
             transform=axes[1].transAxes,
             verticalalignment="top"
         )
@@ -218,12 +218,13 @@ def parity_plots():
     return fig1, fig2
 
 
-
 # #-------------- Test bulk structures ------------------------------
 
-def test_bulk_structures(train_df):
+def test_bulk_structures():
 
     print('Test bulk structures')
+
+    train_df = pd.read_pickle(fit_path / 'train_pred.pckl.gzip',compression='gzip')
 
     def get_energy_diff(row):
         return (row['energy_corrected'] - row['energy_pred']) / row['NUMBER_OF_ATOMS'] 
@@ -1043,6 +1044,7 @@ if __name__ == '__main__':
     parser.add_argument('--all',action='store_true',dest='all',help='Run all test functions')
     parser.add_argument('--train-set','-V',action='store_true',dest='train_set',help=' training set distribution')
     parser.add_argument('--parity','-P',action='store_true',dest='parity',help='parity plots')
+    parser.add_argument('--bulk','-B',action='store_true',dest='bulk',help='Bulk structures')
     parser.add_argument('--rhombo','-R',action='store_true',dest='rhombo',help='A-site R3c hierarchy')
     parser.add_argument('--cubic','-C',action='store_true',dest='cubic',help='A-site Pm3m hierarchy')
     parser.add_argument('--eos','-E',action='store_true',dest='eos',help='equation of state')
@@ -1079,6 +1081,10 @@ if __name__ == '__main__':
         parity_figs = parity_plots()
         for fig in parity_figs:
             figures.append(fig)
+
+    if args.bulk or all:
+        fig = test_bulk_structures()
+        figures.append(fig)
 
     if args.rhombo or all:
         fig = test_A_site_hierarchy_R3c(dft_db)
