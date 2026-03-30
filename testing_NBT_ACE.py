@@ -793,7 +793,7 @@ def test_defect_formation_energies(dft_db):
 
 # # ------------------- Test vacancies vs Na neighbors
 
-def test_Vac_A_vs_Na_neighbors(dft_db):
+def test_Vac_A_vs_Na_neighbors(dft_db,chempots_ACE=False):
 
     print('Test A-site vacancies vs Na neighbors')
 
@@ -865,11 +865,18 @@ def test_Vac_A_vs_Na_neighbors(dft_db):
     for row in dft_db.select(filter=filter):
         atoms = row.toatoms()
         el = atoms.symbols[0]
-        atoms.calc = calc 
-        mu_refs[el] = atoms.get_potential_energy()/len(atoms)
+        atoms.calc = calc
+        if chempots_ACE: 
+            mu_refs[el] = atoms.get_potential_energy()/len(atoms)
+        else:
+            mu_refs[el] = row.energy / len(atoms)
     mu_refs
-    print('Chemical potentials with ACE:')
-    print(mu_refs)
+    if chempots_ACE:
+        print('Chemical potentials with ACE:')
+        print(mu_refs)
+    else:
+        print('Chemical potentials from DFT:')
+        print(mu_refs)
 
     def get_formation_energy(row):
         if row['type'] == 'bulk':
@@ -1051,6 +1058,7 @@ if __name__ == '__main__':
     parser.add_argument('--site','-S',action='store_true',dest='site_potentials',help='site potentials')
     #parser.add_argument('--defects','-D',action='store_true',dest='defects',help='defect formation energies')
     parser.add_argument('--neighbors','-N',action='store_true',dest='neighbors',help='A-site vacancies vs Na neighbors')
+    parser.add_argument('--ACE-chempots','-MU',action='store_true',dest='chempots_ACE',help='Compute chemical potentials with ACE')
     #parser.add_argument('--disorder','-A',action='store_true',dest='disorder',help='A-site disorder')
     parser.add_argument('--mixing','-M',action='store_true',dest='mixing',help='NBT-ST mixing enthalpy')
 
@@ -1108,7 +1116,7 @@ if __name__ == '__main__':
     #         figures.append(fig)
 
     if args.neighbors or all:
-        fig = test_Vac_A_vs_Na_neighbors(dft_db)
+        fig = test_Vac_A_vs_Na_neighbors(dft_db,chempots_ACE=args.chempots_ACE)
         figures.append(fig)
 
     # if args.disorder or all:

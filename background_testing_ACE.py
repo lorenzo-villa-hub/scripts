@@ -52,7 +52,7 @@ def run_backup_and_testing(
                             script_filename,
                              'interim_potential_0.yaml',
                             '--report-path',str(path),
-                            '-E','-C','-R','-N','-S'
+                            '-E','-C','-R','-N','-S','-M'
                             ],
                     stdout=out_file,
                     stderr=err_file,
