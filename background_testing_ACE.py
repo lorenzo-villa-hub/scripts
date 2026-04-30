@@ -37,7 +37,7 @@ def run_backup_and_testing(
                 sys.exit(0) # stop the program if fitting is done
 
     if iter > 50: #and iter % iteration_interval == 0:
-        path = base_path / f'iter_{str(iter).zfill(3)}'
+        path = base_path / f'iter_{str(iter).zfill(4)}'
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
             with open(path / "stdout.txt", "w") as out_file, open(path / "stderr.txt", "w") as err_file:

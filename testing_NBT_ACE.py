@@ -813,6 +813,7 @@ def test_Vac_A_vs_Na_neighbors(dft_db,chempots_ACE=False):
         atoms.calc = calc
         ucf = UnitCellFilter(atoms,hydrostatic_strain=True)
         conv = BFGS(ucf,logfile=ase_logfile).run(fmax=0.05,steps=200)
+        #conv = True
         if conv:
             atoms_dict[label] = atoms.copy()
 
@@ -907,6 +908,72 @@ def test_Vac_A_vs_Na_neighbors(dft_db,chempots_ACE=False):
 
     return plt.gcf()
 
+
+## ------------------ Test A-site vacancies vs disorder ------------------------------------
+def test_Vac_A_vs_Na_neighbors_disordered(dft_db):
+
+    print('Test A-site vacancies vs Na neighbors in disordered structures')
+
+    from defermi.defects import get_defect_from_string
+
+    def filter(row):
+        return 'R3c-SG161/Defects/disordered' in row.path
+
+    data = []
+    for row in dft_db.select(filter=filter):
+        if 'Bulk' in row.path:
+            type = 'bulk'
+            n_Na_nieghbors = None
+            energy_ideal = None
+        else:
+            type = row.path.split('/')[-3]
+            n_Na_nieghbors = int(row.path.split('/')[-2].strip('ZNa'))
+        atoms = row.toatoms().copy()
+        atoms.calc = calc
+        enegy_rel = atoms.get_potential_energy()
+        d = {
+            'id':row.path.split('/')[-5] if type != 'bulk' else row.path.split('/')[-2],
+            'type':type,
+            'n_Na_neighbors':n_Na_nieghbors,
+            'energy_rel':enegy_rel
+        }
+        data.append(d)
+
+    df = pd.DataFrame(data)
+
+
+    sns.set_theme(context='talk',style='whitegrid')
+    plt.figure(figsize=(6,6))
+
+    mu_refs = {
+        'Bi': -3.877834585,
+        'Na': -1.30757939,
+        'O': -4.9411057625,
+        'Sr': -1.6379311033333332,
+        'Ti': -7.807459819999999}
+
+    def get_formation_energy(row):
+        if row['type'] == 'bulk':
+            return None
+        else:
+            energy_bulk = df.loc[(df['type'] == 'bulk') & (df['id'] == row['id'])]['energy_rel'].iloc[0]
+            energy_def = row['energy_rel']
+            element = row['type'].split('_')[-1]
+            eform = energy_def - energy_bulk + mu_refs[element]
+            return eform
+
+    df['eform'] = df.apply(lambda row : get_formation_energy(row), axis=1)
+
+
+    df_def = df[df['type'] != 'bulk']
+    for key in ['Vac_Na','Vac_Bi']:
+        label = get_defect_from_string(key).symbol
+        sns.scatterplot(data=df_def[df_def['type'] == key],x='n_Na_neighbors',y='eform',label=label)
+    plt.xlabel('n° of Na neighbors')
+    plt.ylabel('$\Delta E_F$ (eV)')
+    plt.legend(loc='center left',fontsize=14,bbox_to_anchor=(0.85,0.5))
+    plt.tight_layout()
+    return plt.gcf()
 
 
 ## ------------- Test A-site disorder ----------------------------------------------
@@ -1005,9 +1072,9 @@ def test_NBTST_mixing_enthalpy(dft_db):
         X = float(row.path.split('/')[-2].strip('X'))
         atoms = row.toatoms()
         atoms.calc = calc
-        ucf = UnitCellFilter(atoms)
-        conv = BFGS(atoms=atoms,logfile=ase_logfile).run(fmax=0.05,steps=100)
-        if conv:
+        # ucf = UnitCellFilter(atoms)
+        # conv = BFGS(atoms=atoms,logfile=ase_logfile).run(fmax=0.05,steps=100)
+        if True: #conv:
             d = {
                 'x_Sr':X,
                 'volume':atoms.get_volume(),
@@ -1031,6 +1098,7 @@ def test_NBTST_mixing_enthalpy(dft_db):
     plt.ylabel('Mixing Energy (meV/atom)');
     plt.tight_layout()
     return plt.gcf()
+
 
 
 
@@ -1058,6 +1126,7 @@ if __name__ == '__main__':
     parser.add_argument('--site','-S',action='store_true',dest='site_potentials',help='site potentials')
     #parser.add_argument('--defects','-D',action='store_true',dest='defects',help='defect formation energies')
     parser.add_argument('--neighbors','-N',action='store_true',dest='neighbors',help='A-site vacancies vs Na neighbors')
+    parser.add_argument('--neighbors-random','-NR',action='store_true',dest='neighbors_random',help='A-site vacancies vs Na neighbors in random structures')
     parser.add_argument('--ACE-chempots','-MU',action='store_true',dest='chempots_ACE',help='Compute chemical potentials with ACE')
     #parser.add_argument('--disorder','-A',action='store_true',dest='disorder',help='A-site disorder')
     parser.add_argument('--mixing','-M',action='store_true',dest='mixing',help='NBT-ST mixing enthalpy')
@@ -1117,6 +1186,10 @@ if __name__ == '__main__':
 
     if args.neighbors or all:
         fig = test_Vac_A_vs_Na_neighbors(dft_db,chempots_ACE=args.chempots_ACE)
+        figures.append(fig)
+
+    if args.neighbors_random or all:
+        fig = test_Vac_A_vs_Na_neighbors_disordered(dft_db)
         figures.append(fig)
 
     # if args.disorder or all:
