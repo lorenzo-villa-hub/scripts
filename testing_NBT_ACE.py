@@ -347,6 +347,7 @@ def test_A_site_hierarchy_R3c(dft_db):
 
     return plt.gcf()
 
+
 ### CUBIC Pm3-m
 
 def test_A_site_hierarchy_Pm3m(dft_db):
@@ -419,7 +420,6 @@ def test_A_site_hierarchy_Pm3m(dft_db):
     plt.tight_layout()
     
     return plt.gcf()
-
 
 
 
@@ -633,7 +633,6 @@ def test_defect_formation_energies(dft_db):
     data.append({
     'method':'DFT',
     'type':'relaxed',
-    'atoms':atoms_bulk,
     'composition':bulk_composition,
     'defect_name':'Bulk',
     'charge':0,
@@ -643,7 +642,6 @@ def test_defect_formation_energies(dft_db):
     data.append({
     'method':'ACE',
     'type':'relaxed',
-    'atoms':atoms_bulk,
     'composition':bulk_composition,
     'defect_name':'Bulk',
     'charge':0,
@@ -669,7 +667,6 @@ def test_defect_formation_energies(dft_db):
         data.append({
             'method':'DFT',
             'type':'ideal',
-            'atoms':initial_atoms_dft,
             'composition': composition,
             'defect_name':group,
             'charge':charge,
@@ -683,7 +680,6 @@ def test_defect_formation_energies(dft_db):
         data.append({
         'method':'DFT',
         'type':'relaxed',
-        'atoms':final_atoms_dft,
         'composition': composition,
         'defect_name':group,
         'charge':charge,
@@ -698,7 +694,6 @@ def test_defect_formation_energies(dft_db):
             data.append({
                 'method':'ACE',
                 'type':'ideal',
-                'atoms':atoms,
                 'composition':composition,
                 'defect_name':group,
                 'charge':0, # using 0 instead of None because defects_df forces all items in column to be float in NaN is present
@@ -712,7 +707,6 @@ def test_defect_formation_energies(dft_db):
             data.append({
                 'method':'ACE',
                 'type':'relaxed',
-                'atoms':atoms,
                 'composition':composition,
                 'defect_name':group,
                 'charge':0,
@@ -790,7 +784,6 @@ def test_defect_formation_energies(dft_db):
 
 
 
-
 # # ------------------- Test vacancies vs Na neighbors
 
 def test_Vac_A_vs_Na_neighbors(dft_db,chempots_ACE=False):
@@ -811,7 +804,7 @@ def test_Vac_A_vs_Na_neighbors(dft_db,chempots_ACE=False):
         atoms = row.toatoms()
         atoms = atoms.repeat(supercell_size)
         atoms.calc = calc
-        ucf = UnitCellFilter(atoms,hydrostatic_strain=True)
+        ucf = UnitCellFilter(atoms,hydrostatic_strain=False)
         conv = BFGS(ucf,logfile=ase_logfile).run(fmax=0.05,steps=200)
         #conv = True
         if conv:
@@ -825,7 +818,6 @@ def test_Vac_A_vs_Na_neighbors(dft_db,chempots_ACE=False):
             'id':id,
             'type':'bulk',
             'n_Na_neighbors':None,
-            'atoms_rel':atoms_bulk.copy(),
             'energy_rel':atoms_bulk.get_potential_energy()
         }    
         data.append(d)
@@ -850,8 +842,6 @@ def test_Vac_A_vs_Na_neighbors(dft_db,chempots_ACE=False):
                     'id':id,
                     'type':typ,
                     'n_Na_neighbors':n_Na_neighbors,
-                    'atoms_ideal':atoms_ideal,
-                    'atoms_rel':atoms.copy(),
                     'energy_ideal':energy_ideal,
                     'energy_rel':atoms.get_potential_energy()
                 }
