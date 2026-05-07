@@ -12,7 +12,7 @@ from pyace import PyACECalculator
 from pathlib import Path
 import pandas as pd
 import ase.db
-from ase.optimize import BFGS
+from ase.optimize import BFGS, FIRE
 import numpy as np
 import sys
 import argparse
@@ -22,6 +22,7 @@ from ase.filters import UnitCellFilter
 from pymatgen.core.composition import Composition
 from ase.eos import calculate_eos, EquationOfState
 from pymatgen.core.structure import Structure
+from pymatgen.io.vasp.inputs import Poscar
 
 
 
@@ -1090,6 +1091,57 @@ def test_NBTST_mixing_enthalpy(dft_db):
     return plt.gcf()
 
 
+def test_NEB():
+
+    print('test NEB paths')
+
+    from ase.mep import NEB, NEBTools
+    from pymatgen.analysis.transition_state import NEBAnalysis
+
+    neb_paths = [
+        '/nfshome/tunica/NBT/output_simulations/000025/11_01/final/11_01_VNa_VNa_2/',
+        '/nfshome/tunica/NBT/output_simulations/000025/11_01/11_01_VBi_VBi/11_01_VBi_VBi_2/',
+        '/nfshome/tunica/NBT/output_simulations/000025/11_01/11_01_SrNa_VNa/11_01_SrNa_VNa_34/'
+    ]
+
+    figures = []
+    for dir in neb_paths:
+        path = Path(dir)
+        initial_atoms = Poscar.from_file(path / 'initial/POSCAR').structure.sort().to_ase_atoms()
+        final_atoms = Poscar.from_file(path / 'final/POSCAR').structure.sort().to_ase_atoms()
+
+        for atoms in [initial_atoms,final_atoms]:
+            atoms.calc = calc
+            BFGS(atoms,logfile=ase_logfile).run(fmax=0.01)
+
+        initial_structure = Structure.from_ase_atoms(initial_atoms)
+        final_structure = Structure.from_ase_atoms(final_atoms)
+        structures = initial_structure.interpolate(end_structure=final_structure,nimages=8,autosort_tol=0.5)
+
+        images = [s.to_ase_atoms() for s in structures]
+        for atoms in images:
+            atoms.calc = calc
+
+        neb = NEB(images=images,climb=True,allow_shared_calculator=True)
+        FIRE(neb,trajectory='neb.traj',logfile=ase_logfile).run(fmax=0.05)
+
+        from ase.mep import NEBTools
+
+        fig,axes = plt.subplots(1,2,figsize=(8,4))
+        ax1,ax2 = axes
+
+        NEBTools(images).plot_band(ax=ax1)
+
+        from pymatgen.analysis.transition_state import NEBAnalysis
+        from pynter.tools.plotter import plot_NEB
+
+        neb_analysis = NEBAnalysis.from_dir(path)
+        ax2 = plot_NEB(neb_analysis,ax=ax2)
+        ax2.set_ylim((-100,None))
+
+        figures.append(fig)
+    
+    return figures
 
 
 if __name__ == '__main__':
@@ -1120,6 +1172,7 @@ if __name__ == '__main__':
     parser.add_argument('--ACE-chempots','-MU',action='store_true',dest='chempots_ACE',help='Compute chemical potentials with ACE')
     #parser.add_argument('--disorder','-A',action='store_true',dest='disorder',help='A-site disorder')
     parser.add_argument('--mixing','-M',action='store_true',dest='mixing',help='NBT-ST mixing enthalpy')
+    parser.add_argument('--NEB',action='store_true',dest='neb',help='NEB barriers for A-site')
 
 
     args = parser.parse_args()
@@ -1190,6 +1243,11 @@ if __name__ == '__main__':
     if args.mixing or all:
         fig = test_NBTST_mixing_enthalpy(dft_db)
         figures.append(fig)
+
+    if args.neb or all:
+        neb_figures = test_NEB()
+        for fig in neb_figures:
+            figures.append(fig)
     
 
     # # Save figures
