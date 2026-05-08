@@ -1126,19 +1126,24 @@ def test_NEB():
         FIRE(neb,trajectory='neb.traj',logfile=ase_logfile).run(fmax=0.05)
 
         from ase.mep import NEBTools
+        from defermi.plotter import _style_ax
 
         fig,axes = plt.subplots(1,2,figsize=(8,4))
         ax1,ax2 = axes
+        _style_ax(ax1,fontsize=12,legend=False,grid=False)
 
         NEBTools(images).plot_band(ax=ax1)
+        ax1.title.set_fontsize(12)
 
         from pymatgen.analysis.transition_state import NEBAnalysis
         from pynter.tools.plotter import plot_NEB
 
         neb_analysis = NEBAnalysis.from_dir(path)
-        ax2 = plot_NEB(neb_analysis,ax=ax2)
-        ax2.set_ylim((-100,None))
-
+        ax2 = plot_NEB(neb_analysis,ax=ax2,fontsize=12)
+        ax2.set_ylim((-0.3,None))
+        ax2.set_ylabel(None)
+        ax2.title.set_fontsize(12)
+        plt.tight_layout()
         figures.append(fig)
     
     return figures
